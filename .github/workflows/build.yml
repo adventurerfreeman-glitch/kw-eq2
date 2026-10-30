@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
 jobs:
-  build:
+  build:cmake --build build --config Release --target KWTiltLeanEQ_VST3
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
