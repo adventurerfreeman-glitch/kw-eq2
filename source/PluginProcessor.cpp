@@ -1,123 +1,119 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-using APVTS = juce::AudioProcessorValueTreeState;
-
-static float raw (APVTS& a, const char* id) { return a.getRawParameterValue (id)->load(); }
-
-kw::Settings readSettings (APVTS& a)
-{
-    kw::Settings s;
-    s.tilt = raw (a, "tilt");   s.mids = raw (a, "mids");
-    s.pivot = (int) raw (a, "pivot"); s.lean = (int) raw (a, "lean"); s.width = (int) raw (a, "width");
-    s.leanDepth = raw (a, "leanDepth");
-    s.contour = raw (a, "contour");
-    s.punch = raw (a, "punch"); s.blade = raw (a, "blade");
-    s.cut = raw (a, "cut"); s.push = raw (a, "push"); s.pushHz = raw (a, "pushHz");
-    s.on[kw::gTilt]    = raw (a, "onTilt")    > 0.5f;
-    s.on[kw::gMids]    = raw (a, "onMids")    > 0.5f;
-    s.on[kw::gLean]    = raw (a, "onLean")    > 0.5f;
-    s.on[kw::gContour] = raw (a, "onContour") > 0.5f;
-    s.on[kw::gPunch]   = raw (a, "onPunch")   > 0.5f;
-    s.on[kw::gBlade]   = raw (a, "onBlade")   > 0.5f;
-    s.on[kw::gCut]     = raw (a, "onCut")     > 0.5f;
-    s.on[kw::gPush]    = raw (a, "onPush")    > 0.5f;
-    s.volumeDb = raw (a, "volume");
-    return s;
-}
-
-APVTS::ParameterLayout KwProcessor::createLayout()
-{
-    using F = juce::AudioParameterFloat; using C = juce::AudioParameterChoice; using B = juce::AudioParameterBool;
-    using R = juce::NormalisableRange<float>; using ID = juce::ParameterID;
-    std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
-    p.push_back (std::make_unique<F> (ID { "tilt", 1 },      "Tilt",       R (0.f, 1.f, 0.001f), 0.5f));
-    p.push_back (std::make_unique<F> (ID { "mids", 1 },      "Mids",       R (0.f, 1.f, 0.001f), 0.5f));
-    p.push_back (std::make_unique<F> (ID { "leanDepth", 1 }, "Lean Depth", R (0.f, 1.5f, 0.01f), 1.0f));
-    p.push_back (std::make_unique<F> (ID { "contour", 1 },   "Low Contour", R (-1.f, 1.f, 0.001f), 0.f));
-    p.push_back (std::make_unique<F> (ID { "punch", 1 },     "Mud to Punch", R (0.f, 1.f, 0.001f), 0.f));
-    p.push_back (std::make_unique<F> (ID { "blade", 1 },     "Blade",      R (0.f, 1.f, 0.001f), 0.f));
-    p.push_back (std::make_unique<F> (ID { "cut", 1 },       "Out Cut",    R (0.f, 1.f, 0.001f), 0.f));
-    p.push_back (std::make_unique<F> (ID { "push", 1 },      "Push",       R (0.f, 1.f, 0.001f), 0.f));
-    p.push_back (std::make_unique<F> (ID { "pushHz", 1 },    "Push Hz",    R (60.f, 220.f, 1.f, 0.6f), 100.f));
-    p.push_back (std::make_unique<F> (ID { "volume", 1 },    "Volume (dB)", R (-12.f, 12.f, 0.1f), 0.f));
-    p.push_back (std::make_unique<C> (ID { "pivot", 1 }, "Pivot", juce::StringArray { "Dark 400 Hz", "Bright 1.1 kHz" }, 0));
-    p.push_back (std::make_unique<C> (ID { "lean", 1 },  "Lean",  juce::StringArray { "Low", "High" }, 0));
-    p.push_back (std::make_unique<C> (ID { "width", 1 }, "Width", juce::StringArray { "Broad", "Focused" }, 0));
-    p.push_back (std::make_unique<B> (ID { "onTilt", 1 },    "Tilt On",    true));
-    p.push_back (std::make_unique<B> (ID { "onMids", 1 },    "Mids On",    true));
-    p.push_back (std::make_unique<B> (ID { "onLean", 1 },    "Lean On",    true));
-    p.push_back (std::make_unique<B> (ID { "onContour", 1 }, "Contour On", true));
-    p.push_back (std::make_unique<B> (ID { "onPunch", 1 },   "Punch On",    true));
-    p.push_back (std::make_unique<B> (ID { "onBlade", 1 },   "Blade On",    true));
-    p.push_back (std::make_unique<B> (ID { "onCut", 1 },     "Cut On",     true));
-    p.push_back (std::make_unique<B> (ID { "onPush", 1 },    "Push On",    true));
-    p.push_back (std::make_unique<B> (ID { "bypass", 1 },    "Bypass All", false));
-    return { p.begin(), p.end() };
-}
-
-KwProcessor::KwProcessor()
-    : AudioProcessor (BusesProperties().withInput ("Input", juce::AudioChannelSet::stereo(), true)
-                                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "KW_EQ", createLayout())
+KWTiltLeanEQAudioProcessor::KWTiltLeanEQAudioProcessor()
+#busses(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
+                             .withOutput("Output", juce::AudioChannelSet::stereo(), true))
+#apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
 }
 
-bool KwProcessor::isBusesLayoutSupported (const BusesLayout& l) const
+KWTiltLeanEQAudioProcessor::~KWTiltLeanEQAudioProcessor() {}
+
+const juce::String KWTiltLeanEQAudioProcessor::getName() const { return "KW Dual Matrix EQ"; }
+bool KWTiltLeanEQAudioProcessor::acceptsMidi() const { return false; }
+bool KWTiltLeanEQAudioProcessor::producesMidi() const { return false; }
+bool KWTiltLeanEQAudioProcessor::isMidiEffect() const { return false; }
+double KWTiltLeanEQAudioProcessor::getTailLengthSeconds() const { return 0.0; }
+
+int KWTiltLeanEQAudioProcessor::getNumPrograms() { return 1; }
+int KWTiltLeanEQAudioProcessor::getCurrentProgram() { return 0; }
+void KWTiltLeanEQAudioProcessor::setCurrentProgram (int) {}
+const juce::String KWTiltLeanEQAudioProcessor::getProgramName (int) { return {}; }
+void KWTiltLeanEQAudioProcessor::changeProgramName (int, const juce::String&) {}
+
+juce::AudioProcessorValueTreeState::ParameterLayout KWTiltLeanEQAudioProcessor::createParameterLayout()
 {
-    const auto in = l.getMainInputChannelSet(), out = l.getMainOutputChannelSet();
-    return in == out && (in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::stereo());
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    // Continuous Controls
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("bass", "Bass", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("treble", "Treble", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("midGain", "Mid Lean", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+
+    // Rotary Switches (0 to 2)
+    params.push_back(std::make_unique<juce::AudioParameterChoice>("lowContour", "Low Contour", juce::StringArray{"Tight", "Round", "Loose"}, 1));
+    params.push_back(std::make_unique<juce::AudioParameterChoice>("routingOrder", "Routing Order", juce::StringArray{"Pre-Bax", "Post-Bax", "Parallel"}, 0));
+    params.push_back(std::make_unique<juce::AudioParameterChoice>("highContour", "High Contour", juce::StringArray{"Soft", "Sparkle", "Edge"}, 1));
+
+    // Toggle Switches (Boolean)
+    params.push_back(std::make_unique<juce::AudioParameterBool>("voice", "Voicing (Dark/Bright)", false));
+    params.push_back(std::make_unique<juce::AudioParameterBool>("midPresence", "Mid Presence", false));
+    params.push_back(std::make_unique<juce::AudioParameterBool>("midBandwidth", "Mid Bandwidth (Broad/Narrow)", false));
+
+    return { params.begin(), params.end() };
 }
 
-void KwProcessor::prepareToPlay (double rate, int)
+void KWTiltLeanEQAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    sr = rate;
-    for (auto& c : chans) c.reset();
-    for (auto* sm : { &tiltSm, &midsSm, &contourSm, &punchSm, &bladeSm, &cutSm, &pushSm, &volSm }) sm->reset (rate, 0.03);
-    tiltSm.setCurrentAndTargetValue (raw (apvts, "tilt"));       midsSm.setCurrentAndTargetValue (raw (apvts, "mids"));
-    contourSm.setCurrentAndTargetValue (raw (apvts, "contour")); cutSm.setCurrentAndTargetValue (raw (apvts, "cut"));
-    punchSm.setCurrentAndTargetValue (raw (apvts, "punch")); bladeSm.setCurrentAndTargetValue (raw (apvts, "blade"));
-    pushSm.setCurrentAndTargetValue (raw (apvts, "push"));       volSm.setCurrentAndTargetValue (raw (apvts, "volume"));
+    m_eqEngine.prepare(sampleRate, samplesPerBlock);
 }
 
-void KwProcessor::processBlock (juce::AudioBuffer<float>& buf, juce::MidiBuffer&)
+void KWTiltLeanEQAudioProcessor::releaseResources() {}
+
+bool KWTiltLeanEQAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    if (layouts.mainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.mainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+    return layouts.mainOutputChannelSet() == layouts.mainInputChannelSet();
+}
+
+void KWTiltLeanEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
-    if (raw (apvts, "bypass") > 0.5f) return;
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    kw::Settings s = readSettings (apvts);
-    tiltSm.setTargetValue (s.tilt);       midsSm.setTargetValue (s.mids);
-    contourSm.setTargetValue (s.contour); cutSm.setTargetValue (s.cut);
-    punchSm.setTargetValue (s.punch); bladeSm.setTargetValue (s.blade);
-    pushSm.setTargetValue (s.push);       volSm.setTargetValue (s.volumeDb);
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
 
-    const int n = buf.getNumSamples(), nch = juce::jmin (buf.getNumChannels(), 2);
-    const int step = 32;                      // update the filters in short sub-blocks: smooth knob moves
-    for (int start = 0; start < n; start += step)
+    // Update parameters from APVTS to EQ Engine
+    float bass = apvts.getRawParameterValue("bass")->load();
+    float treble = apvts.getRawParameterValue("treble")->load();
+    float midGain = apvts.getRawParameterValue("midGain")->load();
+    int lowContour = (int)apvts.getRawParameterValue("lowContour")->load();
+    int routingOrder = (int)apvts.getRawParameterValue("routingOrder")->load();
+    int highContour = (int)apvts.getRawParameterValue("highContour")->load();
+    bool voice = apvts.getRawParameterValue("voice")->load() > 0.5f;
+    bool midPresence = apvts.getRawParameterValue("midPresence")->load() > 0.5f;
+    bool midBandwidth = apvts.getRawParameterValue("midBandwidth")->load() > 0.5f;
+
+    m_eqEngine.setParameters(bass, treble, midGain, lowContour, routingOrder, highContour, voice, midPresence, midBandwidth);
+
+    // Process audio channels
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        const int len = juce::jmin (step, n - start);
-        s.tilt = tiltSm.skip (len);   s.mids = midsSm.skip (len);   s.contour = contourSm.skip (len);
-        s.punch = punchSm.skip (len); s.blade = bladeSm.skip (len);
-        s.cut  = cutSm.skip (len);    s.push = pushSm.skip (len);   s.volumeDb = volSm.skip (len);
-        const kw::Bank bank = kw::makeBank (s, sr);
-        for (int ch = 0; ch < nch; ++ch)
+        auto* channelData = buffer.getWritePointer (channel);
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            float* d = buf.getWritePointer (ch) + start;
-            for (int i = 0; i < len; ++i) d[i] = chans[ch].process (bank, d[i]);
+            channelData[sample] = m_eqEngine.processSample(channelData[sample]);
         }
     }
 }
 
-juce::AudioProcessorEditor* KwProcessor::createEditor() { return new KwEditor (*this); }
-
-void KwProcessor::getStateInformation (juce::MemoryBlock& dest)
+bool KWTiltLeanEQAudioProcessor::hasEditor() const { return true; }
+juce::AudioProcessorEditor* KWTiltLeanEQAudioProcessor::createEditor()
 {
-    if (auto xml = apvts.copyState().createXml()) copyXmlToBinary (*xml, dest);
-}
-void KwProcessor::setStateInformation (const void* data, int size)
-{
-    if (auto xml = getXmlFromBinary (data, size))
-        if (xml->hasTagName (apvts.state.getType())) apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    return new juce::GenericAudioProcessorEditor (*this);
 }
 
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new KwProcessor(); }
+void KWTiltLeanEQAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    copyXmlToBinary (*xml, destData);
+}
+
+void KWTiltLeanEQAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+    if (xmlState != nullptr && xmlState->hasTagName (apvts.state.getType()))
+        apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+}
+
+// This creates new instances of the plugin..
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+{
+    return new KWTiltLeanEQAudioProcessor();
+}
