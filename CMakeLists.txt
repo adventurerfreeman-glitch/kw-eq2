@@ -2,8 +2,14 @@ cmake_minimum_required(VERSION 3.22)
 
 project(KWTiltLeanEQ VERSION 0.1.0)
 
-# Include JUCE (adjust path if your JUCE folder is named differently)
-add_subdirectory(JUCE)
+# Automatically fetch JUCE so you never need a local folder or submodule
+include(FetchContent)
+FetchContent_Declare(
+    JUCE
+    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(JUCE)
 
 juce_add_plugin(KWTiltLeanEQ
     COMPANY_NAME "KW"
