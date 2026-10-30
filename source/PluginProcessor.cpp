@@ -50,10 +50,17 @@ void KWTiltLeanEQAudioProcessor::releaseResources() {}
 
 bool KWTiltLeanEQAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-    if (layouts.mainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.mainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    if (layouts.outputBuses.isEmpty() || layouts.inputBuses.isEmpty())
         return false;
-    return layouts.mainOutputChannelSet() == layouts.mainInputChannelSet();
+
+    if (layouts.inputBuses[0] != layouts.outputBuses[0])
+        return false;
+
+    if (layouts.outputBuses[0] != juce::AudioChannelSet::mono() &&
+        layouts.outputBuses[0] != juce::AudioChannelSet::stereo())
+        return false;
+
+    return true;
 }
 
 void KWTiltLeanEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
