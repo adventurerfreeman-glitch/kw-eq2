@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
 jobs:
-  build: - name: Build
+  build: cmake --build build --config Release
   shell: pwsh
   run: |
     cmake --build build --config Release
