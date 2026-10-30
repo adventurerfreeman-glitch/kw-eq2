@@ -2,9 +2,9 @@
 #include "PluginEditor.h"
 
 KWTiltLeanEQAudioProcessor::KWTiltLeanEQAudioProcessor()
-#busses(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
-                             .withOutput("Output", juce::AudioChannelSet::stereo(), true))
-#apvts(*this, nullptr, "Parameters", createParameterLayout())
+    : AudioProcessor (BusesProperties().withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                                      .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+      apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
 }
 
@@ -26,17 +26,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout KWTiltLeanEQAudioProcessor::
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    // Continuous Controls
     params.push_back(std::make_unique<juce::AudioParameterFloat>("bass", "Bass", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>("treble", "Treble", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>("midGain", "Mid Lean", juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
 
-    // Rotary Switches (0 to 2)
     params.push_back(std::make_unique<juce::AudioParameterChoice>("lowContour", "Low Contour", juce::StringArray{"Tight", "Round", "Loose"}, 1));
     params.push_back(std::make_unique<juce::AudioParameterChoice>("routingOrder", "Routing Order", juce::StringArray{"Pre-Bax", "Post-Bax", "Parallel"}, 0));
     params.push_back(std::make_unique<juce::AudioParameterChoice>("highContour", "High Contour", juce::StringArray{"Soft", "Sparkle", "Edge"}, 1));
 
-    // Toggle Switches (Boolean)
     params.push_back(std::make_unique<juce::AudioParameterBool>("voice", "Voicing (Dark/Bright)", false));
     params.push_back(std::make_unique<juce::AudioParameterBool>("midPresence", "Mid Presence", false));
     params.push_back(std::make_unique<juce::AudioParameterBool>("midBandwidth", "Mid Bandwidth (Broad/Narrow)", false));
@@ -68,7 +65,6 @@ void KWTiltLeanEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // Update parameters from APVTS to EQ Engine
     float bass = apvts.getRawParameterValue("bass")->load();
     float treble = apvts.getRawParameterValue("treble")->load();
     float midGain = apvts.getRawParameterValue("midGain")->load();
@@ -81,7 +77,6 @@ void KWTiltLeanEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     m_eqEngine.setParameters(bass, treble, midGain, lowContour, routingOrder, highContour, voice, midPresence, midBandwidth);
 
-    // Process audio channels
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
@@ -112,7 +107,6 @@ void KWTiltLeanEQAudioProcessor::setStateInformation (const void* data, int size
         apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
 }
 
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new KWTiltLeanEQAudioProcessor();
