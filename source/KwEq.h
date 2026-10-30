@@ -10,7 +10,6 @@ public:
     KwEq() = default;
     ~KwEq() = default;
 
-    // Set parameters
     void setParameters(float bass, float treble, float midGain, int lowContour, int routingOrder, int highContour, bool darkBrightVoice, bool midPresence, bool midBandwidth)
     {
         m_bass = bass;
@@ -26,29 +25,23 @@ public:
 
     void prepare(double sampleRate, int samplesPerBlock)
     {
+        juce::ignoreUnused(samplesPerBlock);
         m_sampleRate = sampleRate;
         reset();
     }
 
     void reset()
     {
-        // Reset filter states here if needed
     }
 
     float processSample(float input)
     {
         float sample = input;
 
-        // Apply Voice bias (Dark vs Bright)
         if (m_darkBrightVoice)
-            sample *= 1.05f; // Bright shift approximation
+            sample *= 1.05f;
         else
-            sample *= 0.95f; // Dark shift approximation
-
-        // Process based on routing order:
-        // 0 = Pre-Bax (Mid -> Bax)
-        // 1 = Post-Bax (Bax -> Mid)
-        // 2 = Parallel (Bax || Mid)
+            sample *= 0.95f;
 
         if (m_routingOrder == 0)
         {
@@ -60,7 +53,7 @@ public:
             sample = processBaxandall(sample);
             sample = processMidStage(sample);
         }
-        else // Parallel
+        else
         {
             float baxOut = processBaxandall(sample);
             float midOut = processMidStage(sample);
@@ -73,7 +66,6 @@ public:
 private:
     float processBaxandall(float in)
     {
-        // Simple shelving approximation for demonstration
         float lowShelf = in * (1.0f + m_bass * 0.1f);
         float highShelf = lowShelf * (1.0f + m_treble * 0.1f);
         return highShelf;
