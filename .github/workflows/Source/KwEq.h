@@ -3,7 +3,7 @@
 #include <cmath>
 
 // KW Tilt / Lean EQ - Version 0.2
-// Stronger lean, stronger tilt, new pivots (400 Hz / 2 kHz), better Broad/Focused
+// Stronger lean, stronger tilt, Dark 400 Hz / Bright 2 kHz
 
 namespace kw
 {
@@ -32,7 +32,7 @@ constexpr float kQFocused        = 1.90f;
 
 constexpr float kSkirtQ          = 0.42f;
 constexpr float kSkirtShift      = 2.15f;
-constexpr float kSkirtAmount     = 0.78f;   // stronger lean
+constexpr float kSkirtAmount     = 0.78f;
 constexpr float kBellShare       = 0.28f;
 
 constexpr float kLowShoulder     = 100.0f;
