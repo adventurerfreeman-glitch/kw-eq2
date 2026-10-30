@@ -15,7 +15,7 @@ jobs:
           "dir=$($f.DirectoryName)" >> $env:GITHUB_OUTPUT
           Write-Host "Project: $($f.DirectoryName)"
       - name: Configure
-        run: cmake -S "${{ steps.find.outputs.dir }}" -B build -G "Visual Studio 17 2022" -A x64
+        run: run: cmake -S "${{ steps.find.outputs.dir }}" -B build -A x64
       - name: Build
         run: cmake --build build --config Release --target KWTiltLeanEQ_VST3
       - name: Upload VST3
