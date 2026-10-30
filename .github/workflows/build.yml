@@ -1,30 +1,29 @@
 name: Build Windows VST3
+
 on:
   workflow_dispatch:
   push:
+    branches: [ main, master ]
+  pull_request:
+
 jobs:
-  build: cmake --build build --config Release
-  shell: pwsh
-  run: |
-    cmake --build build --config Release
+  build:
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Find project folder
-        id: find
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
         shell: pwsh
         run: |
-          $f = Get-ChildItem -Recurse -Filter CMakeLists.txt | Sort-Object { $_.FullName.Length } | Select-Object -First 1
-          "dir=$($f.DirectoryName)" >> $env:GITHUB_OUTPUT
-          Write-Host "Project: $($f.DirectoryName)"
-      - name: Configure
-        shell: pwsh
-        run: |
-          cmake -S "${{ steps.find.outputs.dir }}" -B build -A x64
+          cmake -S . -B build -A x64
+
       - name: Build
         shell: pwsh
         run: |
-          cmake --build build --config Release --target KWTiltLeanEQ_VST3
+          cmake --build build --config Release
+
       - name: Upload VST3
         uses: actions/upload-artifact@v4
         with:
