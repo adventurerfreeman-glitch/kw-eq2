@@ -15,9 +15,13 @@ jobs:
           "dir=$($f.DirectoryName)" >> $env:GITHUB_OUTPUT
           Write-Host "Project: $($f.DirectoryName)"
       - name: Configure
-        run: run: cmake -S "${{ steps.find.outputs.dir }}" -B build -A x64
+        shell: pwsh
+        run: |
+          cmake -S "${{ steps.find.outputs.dir }}" -B build -A x64
       - name: Build
-        run: cmake --build build --config Release --target KWTiltLeanEQ_VST3
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target KWTiltLeanEQ_VST3
       - name: Upload VST3
         uses: actions/upload-artifact@v4
         with:
