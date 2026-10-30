@@ -1,50 +1,48 @@
 #pragma once
-#include <juce_audio_utils/juce_audio_utils.h>
-#include "PluginProcessor.h"
 
-// Live response display: the combined curve (white) and each feature's own contribution (coloured).
-class CurveView : public juce::Component, private juce::Timer
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "KwEq.h"
+
+class KWTiltLeanEQAudioProcessor  : public juce::AudioProcessor
 {
 public:
-    explicit CurveView (KwProcessor& p);
-    void paint (juce::Graphics&) override;
-    static juce::Colour groupColour (int g);
-private:
-    void timerCallback() override { repaint(); }
-    KwProcessor& proc;
-};
+    KWTiltLeanEQAudioProcessor();
+    ~KWTiltLeanEQAudioProcessor() override;
 
-class KwEditor : public juce::AudioProcessorEditor
-{
-public:
-    explicit KwEditor (KwProcessor&);
-    void paint (juce::Graphics&) override;
-    void resized() override;
-private:
-    struct Knob
-    {
-        juce::Slider slider; juce::Label label;
-        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> att;
-    };
-    struct Combo
-    {
-        juce::ComboBox box; juce::Label label;
-        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> att;
-    };
-    struct Toggle
-    {
-        juce::TextButton button;
-        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> att;
-    };
-    void addKnob (Knob&, const juce::String& id, const juce::String& text, juce::Colour c, const juce::String& suffix = {});
-    void addCombo (Combo&, const juce::String& id, const juce::String& text, const juce::StringArray& items);
-    void addToggle (Toggle&, const juce::String& id, const juce::String& text, juce::Colour c);
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    void releaseResources() override;
 
-    KwProcessor& proc;
-    CurveView curve;
-    Knob tilt, mids, leanDepth, contour, punchK, blade, cutK, push, pushHz, volume;
-    Combo pivot, lean, width;
-    Toggle onTilt, onMids, onLean, onContour, onPunch, onBlade, onCut, onPush, bypassAll;
-    juce::Label featuresLabel;
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KwEditor)
+   #PJC_ENABLE_DOUBLE_PRECISION_PROCESSING_ON_WINDOWS
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+   #endif
+
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override;
+
+    const juce::String getName() const override;
+
+    bool acceptsMidi() const override;
+    bool producesMidi() const override;
+    bool isMidiEffect() const override;
+    double getTailLengthSeconds() const override;
+
+    int getNumPrograms() override;
+    int getCurrentProgram() override;
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String& newName) override;
+
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
+
+    juce::AudioProcessorValueTreeState apvts;
+
+private:
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    KwEq m_eqEngine;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KWTiltLeanEQAudioProcessor)
 };
