@@ -3,7 +3,10 @@ on:
   workflow_dispatch:
   push:
 jobs:
-  build: cmake --build build --config Release --target KWTiltLeanEQ
+  build: - name: Build
+  shell: pwsh
+  run: |
+    cmake --build build --config Release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
